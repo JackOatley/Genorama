@@ -1,41 +1,39 @@
 <body>
 <canvas id=a></canvas>
 <script>
-a.width = 960;
-a.height = 480;
+a.width = 640;
+a.height = 320;
 c = a.getContext("2d");
 
 //
-let WATER = "#44a4ff",
-	GRASS = "#53a342",
-	TREE = "#2f660066",
-	STONE = "#666",
-	HILL = "#8c6038",
-	SAND = "#FF0",
-	SEA = "#0671d6",
-	DRYLANDS = "#a6ba57",
-	SNOW = "#FFF"
+var W = "#4af",
+	G = "#5a4",
+	T = "#2604",
+	R = "#666",
+	S = "#DDA",
+	O = "#07d",
+	D = "#ab5",
+	I = "#FFF",
+	n;
 
 // Set up permutation list.
 var permutation = [];
-for (var n=0; n<512; n++) {
+for (n=512; n--;) {
 	permutation[n] = ~~(Math.random() * 256);
 }
 
 /**
  * @param {number} x
  * @param {number} y
- * @param {number} g Gain.
  * @param {number} f Frequency.
  * @param {number} o Octaves.
- * t is Total. a is Amplitude. l is Lacunarity.
+ * t is Total.
  */
-function getHeight(x, y, g, f, o) {
-	var t = 0, a = g, l = 2.0;
-	for (i=0; i<o; i++) {
-		t += noise(x*f, y*f) * a;
-		f *= l;
-		a *= g;
+function getHeight(x, y, f, o) {
+	var t = 0;
+	for (n=o; n--;) {
+		t += noise(x*f, y*f);
+		f *= 2;
 	}
 	return t;
 }
@@ -44,23 +42,10 @@ function getHeight(x, y, g, f, o) {
  *
  */
 function gradient(h, u, v) {
-	h = h & 7;
-	if ( h >= 4 ) {
-		var a = u;
-		u = v;
-		v = a;
-	}
-	if ( h & 1 ) {
-		if ( h & 2 )
-			return -u + -2.0 * v;
-		else
-			return -u + 2.0 * v;
-	} else {
-		if ( h & 2 )
-			return  u + -2.0 * v;
-		else
-			return  u + 2.0 * v;
-	}
+	if ((h&=7)<=4) [u,v]=[v,u]
+	return (h&1
+		? -u + (h&2 ? -2 : 2)
+		: u + (h&2 ? -2 : 2)) * v;
 }
 
 /**
@@ -69,8 +54,8 @@ function gradient(h, u, v) {
 function noise(x, y) {
 
 	var s = (x+y)*0.366025403;
-	var i = Math.floor(x + s);
-	var j = Math.floor(y + s);
+	var i = ~~(x + s);
+	var j = ~~(y + s);
 
 	var t = (i+j)*0.211324865;
 	var x0 = x-(i-t);
@@ -118,91 +103,103 @@ function generateCell(x, y) {
 	y /= 4
 
 	// base
-	var type = GRASS;
+	var type = G;
 
 	//
-	var river = Math.pow(Math.abs(getHeight(x, y, 1, 0.0025, 4)), 2.5);
-	var tributary = Math.pow(Math.abs(getHeight(x, y, 1, 0.04, 1)), 2);
-	var moisture = river * 0.8 + getHeight(x, y, 1, 0.16, 1) * 0.2;
+	var river = Math.pow(Math.abs(getHeight(x, y, 0.0025, 4)), 2.5);
+	var tributary = Math.pow(Math.abs(getHeight(x, y, 0.04, 1)), 2);
+	var moisture = river * 0.8 + getHeight(x, y, 0.16, 1) * 0.2;
 
-	if (moisture > 1.5) {
-		type = DRYLANDS;
-	}
+	if (moisture > 1.5) type = D;
 
 	// forests
-	var forest = getHeight(x, y, 1, 0.005, 1);
-	if (forest > 0.6 || (forest > 0.2 && moisture < 0.000001)) type = TREE;
+	var forest = getHeight(x, y, 0.005, 3);
+	if (forest > 0.6 || (forest > 0.1 && moisture < 0.000001)) type = T;
 
 	// mountain
-	var height = 1 + getHeight(x, y, 1, 0.04, 1) * 0.4;
-	height += getHeight(x, y, 1, 0.02, 1) * 0.6;
-	height += getHeight(x, y, 1, 0.16, 1) * 0.6;
+	var height = 1 + getHeight(x, y, 0.04, 1) * 0.4;
+	height += getHeight(x, y, 0.02, 1) * 0.6;
+	height += getHeight(x, y, 0.16, 1) * 0.6;
 	height *= river;
 	//if (height > 1.2) type = STONE;
 	//if (height > 5) type = SNOW;
 
 	// hills
-	height += 0.5 + getHeight(y, x, 1, 0.16, 1) * 0.5;
-	if (height > 1.1 && height <= 1.2) type = HILL;
+	height += 0.5 + getHeight(y, x, 0.16, 1) * 0.5;
 	height += 0.8;
 
 	// rivers
-	if (river < 0.005) type = WATER;
+	if (river < 0.005) type = W;
 	tributary += river * 0.2;
-	if (tributary < 0.025) type = WATER;
+	if (tributary < 0.025) type = W;
 
-	height -= (1 + getHeight(x, y, 1, 0.08, 1)) * 0.2;
+	height -= (1 + getHeight(x, y, 0.08, 1)) * 0.2;
 	//if (height <= 0.12) type = SAND;
 	//if (height <= 0.1) type = WATER;
 
-	height -= Math.pow(200, getHeight(x, y, 1, 0.0008, 1));
-	if (height <= -1.2) type = SAND;
-	if (height <= -1.5) type = WATER;
-	if (height <= -4) type = SEA;
-	if (height > 2) type = STONE;
-	if (height > 8) type = SNOW;
+	height -= Math.pow(200, getHeight(x, y, 0.0008, 1));
+	if (height <= -1.2) type = S;
+	if (height <= -1.5) type = W;
+	if (height <= -4) type = O;
+	if (height > 2) type = R;
+	if (height > 8) type = I;
 
 	return {
-		type: type,
-		height: (type === TREE) ? 9
-			  : (type === WATER || type === SEA || type === SAND) ? height/4
-			  : height*2
+		t: type,
+		h: (type === T) ? height+5
+			  : (type === W || type === O || type === S) ? 1//height/4
+			  : Math.max(1, height*2)
 	}
 
 }
 
-for (var x=0; x<960; x++)
-for (var y=0; y<480; y++) {
-	var cell = generateCell(x, y*4);
-	var cell2 = generateCell(x+5, y*4+5);
-	c.fillStyle = cell.type;
-	c.fillRect(x, y-cell.height, 1, cell.height*2);
-	if (cell.height < cell2.height) {
-		c.fillStyle = "#0002";
-		c.fillRect(x, y-cell.height, 1, cell.height*2);
-	}
-}
+c.font = '40px courier';
+c.textAlign = "center";
+c.fillText("Painting happy trees!", 320, 160)
 
-let mx = 960;
-let mspeed = 2;
+var x = 0;
+var alpha = 0;
 function step() {
-	mx+=mspeed;
-	c.drawImage(a, -mspeed, 0);
-	for (var x=0; x<mspeed; x++)
-	for (var y=0; y<480; y++) {
-		var cell = generateCell(mx+x, y*4);
-		var cell2 = generateCell(mx+x+5, y*4+5);
-		c.fillStyle = cell.type;
-		c.fillRect(960-mspeed+x, y-cell.height, 1, cell.height*2);
-		if (cell.height < cell2.height) {
-			c.fillStyle = "#0002";
-			c.fillRect(960-mspeed+x, y-cell.height, 1, cell.height*2);
+
+	if (alpha < 1) alpha += 0.002;
+	x++;
+
+	// Draw canvas shifted to left.
+	c.globalAlpha = 1;
+	c.globalCompositeOperation = "copy";
+	c.drawImage(a, -1, 0);
+
+	// Draw new cells (that are "coming in").
+	c.globalCompositeOperation = "source-over";
+	c.globalAlpha = alpha;
+	for (var y=0; y<340; y++) {
+		var cell = generateCell(x, y*4);
+		var shadow = Math.max(
+			generateCell(x+10, y*4+10).h,
+			generateCell(x+20, y*4+20).h,
+			generateCell(x+30, y*4+30).h,
+			generateCell(x+40, y*4+40).h
+		);
+
+		// We use "9" as the height here because it's a single char and happens
+		// to be enough! :P
+		//
+		// Color.
+		c.fillStyle = cell.t;
+		c.fillRect(639, y-cell.h, 1, 9);
+
+		// Shadow.
+		if (cell.h < shadow) {
+			c.fillStyle = "rgba(0,0,0,"+shadow/50+")";
+			c.fillRect(639, y-cell.h, 1, 9);
 		}
+
 	}
-	window.requestAnimationFrame(step);
+
 }
 
-window.requestAnimationFrame(step);
+// Wait a bit, then start a loop.
+setTimeout(_ => setInterval(step, 10), 1000)
 
 </script>
 </body>
