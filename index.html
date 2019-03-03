@@ -96,6 +96,10 @@ function noise(x, y) {
 /**
  * @param {number} x
  * @param {number} y
+ * Here we combine serveral layers of noise to produce the terrain for a given
+ * cell. This is largely dark magic. A lot of layers directly depend on other
+ * layers, so changing one part of it can change the rest in a kind of domino
+ * effect.
  */
 function generateCell(x, y) {
 
@@ -108,37 +112,31 @@ function generateCell(x, y) {
 	//
 	var river = Math.pow(Math.abs(getHeight(x, y, 0.0025, 4)), 2.5);
 	var tributary = Math.pow(Math.abs(getHeight(x, y, 0.04, 1)), 2);
-	var moisture = river * 0.8 + getHeight(x, y, 0.16, 1) * 0.2;
-
-	if (moisture > 1.5) type = D;
+	var moisture = river * 0.8 + getHeight(x, y, 0.16, 2) * 0.2;
 
 	// forests
 	var forest = getHeight(x, y, 0.005, 3);
-	if (forest > 0.6 || (forest > 0.1 && moisture < 0.000001)) type = T;
 
 	// mountain
 	var height = 1 + getHeight(x, y, 0.04, 1) * 0.4;
 	height += getHeight(x, y, 0.02, 1) * 0.6;
 	height += getHeight(x, y, 0.16, 1) * 0.6;
 	height *= river;
-	//if (height > 1.2) type = STONE;
-	//if (height > 5) type = SNOW;
 
 	// hills
 	height += 0.5 + getHeight(y, x, 0.16, 1) * 0.5;
 	height += 0.8;
 
 	// rivers
-	if (river < 0.005) type = W;
 	tributary += river * 0.2;
+	//height -= (1 + getHeight(x, y, 0.08, 1)) * 0.2;
+
+	height -= Math.pow(100, getHeight(x, y, 0.001, 1));
+	if (moisture > 1) type = D;
+	if (river < 0.005) type = W;
 	if (tributary < 0.025) type = W;
-
-	height -= (1 + getHeight(x, y, 0.08, 1)) * 0.2;
-	//if (height <= 0.12) type = SAND;
-	//if (height <= 0.1) type = WATER;
-
-	height -= Math.pow(200, getHeight(x, y, 0.0008, 1));
 	if (height <= -1.2) type = S;
+	if (forest > 0.6 || (forest > 0.1 && moisture < 0)) type = T;
 	if (height <= -1.5) type = W;
 	if (height <= -4) type = O;
 	if (height > 2) type = R;
@@ -146,23 +144,27 @@ function generateCell(x, y) {
 
 	return {
 		t: type,
-		h: (type === T) ? height+5
-			  : (type === W || type === O || type === S) ? 1//height/4
-			  : Math.max(1, height*2)
+		h: type === T ? height+5
+			: type === W || type === O || type === S ? 1//height/4
+			: Math.max(1, height*2)
 	}
 
 }
 
-c.font = '40px courier';
+c.font = "40px serif";
 c.textAlign = "center";
 c.fillText("Painting happy trees!", 320, 160)
 
-var x = 0;
-var alpha = 0;
+var X = 0;
+var A = 0;
 function step() {
 
-	if (alpha < 1) alpha += 0.002;
-	x++;
+	// Fade in terrain, just provides a nic fast transition, as opposed to
+	// waiting for a full view to be drawn.
+	if (A < 1) A += 0.002;
+
+	// Move draw across.
+	X++;
 
 	// Draw canvas shifted to left.
 	c.globalAlpha = 1;
@@ -171,19 +173,19 @@ function step() {
 
 	// Draw new cells (that are "coming in").
 	c.globalCompositeOperation = "source-over";
-	c.globalAlpha = alpha;
+	c.globalAlpha = A;
 	for (var y=0; y<340; y++) {
-		var cell = generateCell(x, y*4);
+		var cell = generateCell(X, y*4);
 		var shadow = Math.max(
-			generateCell(x+10, y*4+10).h,
-			generateCell(x+20, y*4+20).h,
-			generateCell(x+30, y*4+30).h,
-			generateCell(x+40, y*4+40).h
+			generateCell(X+10, y*4+10).h,
+			generateCell(X+20, y*4+20).h,
+			generateCell(X+30, y*4+30).h,
+			generateCell(X+40, y*4+40).h
 		);
 
 		// We use "9" as the height here because it's a single char and happens
 		// to be enough! :P
-		//
+
 		// Color.
 		c.fillStyle = cell.t;
 		c.fillRect(639, y-cell.h, 1, 9);
