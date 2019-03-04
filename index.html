@@ -6,21 +6,19 @@ a.height = 320;
 c = a.getContext("2d");
 
 //
-var W = "#4af",
-	G = "#5a4",
+var W = "#4AF",
+	G = "#5A4",
 	T = "#2604",
 	R = "#666",
 	S = "#DDA",
-	O = "#07d",
-	D = "#ab5",
+	O = "#07D",
+	D = "#AB5",
 	I = "#FFF",
-	n;
+	N,
+	J;
 
 // Set up permutation list.
-var permutation = [];
-for (n=512; n--;) {
-	permutation[n] = ~~(Math.random() * 256);
-}
+var plist = [...Array(512)].map(_=>~~(Math.random()*256));
 
 /**
  * @param {number} x
@@ -29,19 +27,19 @@ for (n=512; n--;) {
  * @param {number} o Octaves.
  * t is Total.
  */
-function getHeight(x, y, f, o) {
-	var t = 0;
-	for (n=o; n--;) {
-		t += noise(x*f, y*f);
-		f *= 2;
+var getHeight = (x, y, f, o) => {
+	J = 0;
+	for (N=o; N--;) {
+		J += noise(x*f, y*f)
+		f *= 2
 	}
-	return t;
+	return J
 }
 
 /**
  *
  */
-function gradient(h, u, v) {
+var gradient = (h, u, v) => {
 	if ((h&=7)<=4) [u,v]=[v,u]
 	return (h&1
 		? -u + (h&2 ? -2 : 2)
@@ -51,45 +49,43 @@ function gradient(h, u, v) {
 /**
  *
  */
-function noise(x, y) {
+var noise = (x, y) => {
 
-	var s = (x+y)*0.366025403;
+	var s = (x+y)*.366025403;
 	var i = ~~(x + s);
 	var j = ~~(y + s);
 
-	var t = (i+j)*0.211324865;
+	var t = (i+j)*.211324865;
 	var x0 = x-(i-t);
 	var y0 = y-(j-t);
 
-	var i1 = (x0 > y0);
+	var i1 = x0 > y0;
 
-	var x1 = x0 - i1  + 0.211324865;
-	var y1 = y0 - !i1 + 0.211324865;
-	var x2 = x0 - 0.57735027;
-	var y2 = y0 - 0.57735027;
+	var x1 = x0 - i1  + .211324865;
+	var y1 = y0 - !i1 + .211324865;
+	var x2 = x0 - .57735027;
+	var y2 = y0 - .57735027;
 
 	var ii = i & 255;
 	var jj = j & 255;
 
-	var plist = permutation;
-
-	var total = 0;
-	var t0 = 0.5 - x0*x0-y0*y0;
+	J = 0;
+	var t0 = .5 - x0*x0-y0*y0;
 	if (t0 >= 0) {
-		total += Math.pow(t0, 4) * gradient(plist[ii+plist[jj]], x0, y0);
+		J += Math.pow(t0, 4) * gradient(plist[ii+plist[jj]], x0, y0);
 	}
 
-	var t1 = 0.5 - x1*x1-y1*y1;
+	var t1 = .5 - x1*x1-y1*y1;
 	if (t1 >= 0) {
-		total += Math.pow(t1, 4) * gradient(plist[ii+i1+plist[jj+!i1]], x1, y1);
+		J += Math.pow(t1, 4) * gradient(plist[ii+i1+plist[jj+!i1]], x1, y1);
 	}
 
-	var t2 = 0.5 - x2*x2-y2*y2;
+	var t2 = .5 - x2*x2-y2*y2;
 	if (t2 >= 0) {
-		total += Math.pow(t2, 4) * gradient(plist[ii+1+plist[jj+1]], x2, y2);
+		J += Math.pow(t2, 4) * gradient(plist[ii+1+plist[jj+1]], x2, y2);
 	}
 
-	return 40 * total;
+	return 40 * J;
 
 }
 
@@ -101,7 +97,7 @@ function noise(x, y) {
  * layers, so changing one part of it can change the rest in a kind of domino
  * effect.
  */
-function generateCell(x, y) {
+var generateCell = (x, y) => {
 
 	x /= 4
 	y /= 4
@@ -110,58 +106,49 @@ function generateCell(x, y) {
 	var type = G;
 
 	//
-	var river = Math.pow(Math.abs(getHeight(x, y, 0.0025, 4)), 2.5);
-	var tributary = Math.pow(Math.abs(getHeight(x, y, 0.04, 1)), 2);
-	var moisture = river * 0.8 + getHeight(x, y, 0.16, 2) * 0.2;
+	var river = Math.pow(Math.abs(getHeight(x, y, .0025, 4)), 2.5);
+	var tributary = Math.pow(Math.abs(getHeight(x, y, .04, 1)), 2) + river * .2;
+	var moisture = river * .8 + getHeight(x, y, .16, 2) * 0.2;
 
 	// forests
-	var forest = getHeight(x, y, 0.005, 3);
+	var forest = getHeight(x, y, .005, 3);
 
 	// mountain
-	var height = 1 + getHeight(x, y, 0.04, 1) * 0.4;
-	height += getHeight(x, y, 0.02, 1) * 0.6;
-	height += getHeight(x, y, 0.16, 1) * 0.6;
-	height *= river;
+	J = 1 + getHeight(x, y, .04, 1) * .4;
+	J += getHeight(x, y, .02, 1) * .6;
+	J += getHeight(x, y, .16, 1) * .6;
+	J *= river;
 
 	// hills
-	height += 0.5 + getHeight(y, x, 0.16, 1) * 0.5;
-	height += 0.8;
+	J += 1.3 + getHeight(y, x, .16, 1) * .5;
 
-	// rivers
-	tributary += river * 0.2;
-	//height -= (1 + getHeight(x, y, 0.08, 1)) * 0.2;
-
-	height -= Math.pow(100, getHeight(x, y, 0.001, 1));
+	J -= Math.pow(100, getHeight(x, y, .001, 1));
 	if (moisture > 1) type = D;
-	if (river < 0.005) type = W;
-	if (tributary < 0.025) type = W;
-	if (height <= -1.2) type = S;
-	if (forest > 0.6 || (forest > 0.1 && moisture < 0)) type = T;
-	if (height <= -1.5) type = W;
-	if (height <= -4) type = O;
-	if (height > 2) type = R;
-	if (height > 8) type = I;
+	if (river < .005) type = W;
+	if (tributary < .025) type = W;
+	if (J <= -1.2) type = S;
+	if (forest > .6 || (forest > .1 && moisture < 0)) type = T;
+	if (J <= -1.5) type = W;
+	if (J <= -4) type = O;
+	if (J > 2) type = R;
+	if (J > 8) type = I;
 
 	return {
 		t: type,
-		h: type === T ? height+5
-			: type === W || type === O || type === S ? 1//height/4
-			: Math.max(1, height*2)
+		h: type === T ? J+5
+			: type === W || type === O || type === S ? 1
+			: Math.max(1, J*3)
 	}
 
 }
 
-c.font = "40px serif";
-c.textAlign = "center";
-c.fillText("Painting happy trees!", 320, 160)
-
 var X = 0;
 var A = 0;
-function step() {
+setInterval(_ => {
 
 	// Fade in terrain, just provides a nic fast transition, as opposed to
 	// waiting for a full view to be drawn.
-	if (A < 1) A += 0.002;
+	if (A < 1) A += .002;
 
 	// Move draw across.
 	X++;
@@ -174,13 +161,13 @@ function step() {
 	// Draw new cells (that are "coming in").
 	c.globalCompositeOperation = "source-over";
 	c.globalAlpha = A;
-	for (var y=0; y<340; y++) {
-		var cell = generateCell(X, y*4);
+	for (Y=0; Y<340; Y++) {
+		var cell = generateCell(X, Y*4);
 		var shadow = Math.max(
-			generateCell(X+10, y*4+10).h,
-			generateCell(X+20, y*4+20).h,
-			generateCell(X+30, y*4+30).h,
-			generateCell(X+40, y*4+40).h
+			generateCell(X+10, Y*4+10).h,
+			generateCell(X+20, Y*4+20).h,
+			generateCell(X+30, Y*4+30).h,
+			generateCell(X+40, Y*4+40).h
 		);
 
 		// We use "9" as the height here because it's a single char and happens
@@ -188,20 +175,17 @@ function step() {
 
 		// Color.
 		c.fillStyle = cell.t;
-		c.fillRect(639, y-cell.h, 1, 9);
+		c.fillRect(639, Y-cell.h, 1, 9);
 
 		// Shadow.
 		if (cell.h < shadow) {
 			c.fillStyle = "rgba(0,0,0,"+shadow/50+")";
-			c.fillRect(639, y-cell.h, 1, 9);
+			c.fillRect(639, Y-cell.h, 1, 9);
 		}
 
 	}
 
-}
-
-// Wait a bit, then start a loop.
-setTimeout(_ => setInterval(step, 10), 1000)
+}, 10)
 
 </script>
 </body>
